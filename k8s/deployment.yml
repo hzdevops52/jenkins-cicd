@@ -16,7 +16,7 @@ spec:
   spec:
     containers:
     - name: my-app
-      image: hzdevops/my-app:latest
+      image: hzdevops52/my-app:latest
       ports:
       - containerPort: 3000
       resources:

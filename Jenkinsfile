@@ -6,7 +6,7 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         
         // Docker image name (CHANGE THIS to your Docker Hub username!)
-        DOCKER_IMAGE = 'YOUR_DOCKERHUB_USERNAME/my-app'
+        DOCKER_IMAGE = 'hzdevops52/my-app'
         
         // Image tag using build number
         IMAGE_TAG = "${BUILD_NUMBER}"
