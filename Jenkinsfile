@@ -5,7 +5,7 @@ pipeline {
         // Docker Hub credentials (ID from Jenkins credentials)
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         
-        // Docker image name (CHANGE THIS to your Docker Hub username!)
+        // Docker image name
         DOCKER_IMAGE = 'hzdevops52/my-app'
         
         // Image tag using build number
@@ -50,6 +50,9 @@ pipeline {
             steps {
                 echo '🧪 Testing Docker image...'
                 sh '''
+                    # Clean up any existing test container
+                    docker rm -f test-container 2>/dev/null || true
+                    
                     # Run container in background
                     docker run -d --name test-container -p 8888:3000 ${DOCKER_IMAGE_FULL}
                     
@@ -92,13 +95,13 @@ pipeline {
             steps {
                 echo '📝 Updating Kubernetes deployment with new image tag...'
                 sh '''
-                    # Update deployment.yaml with new image tag
-                    sed -i "s|image: .*|image: ${DOCKER_IMAGE_FULL}|g" k8s/deployment.yaml
-                    sed -i "s|value: \"PLACEHOLDER\"|value: \"${BUILD_NUMBER}\"|g" k8s/deployment.yaml
+                    # Update deployment with new image tag
+                    sed -i "s|image: .*my-app.*|image: ${DOCKER_IMAGE_FULL}|g" k8s/deployment.yml
+                    sed -i "s|value: \"PLACEHOLDER\"|value: \"${BUILD_NUMBER}\"|g" k8s/deployment.yml
                     
                     # Show updated deployment
-                    echo "Updated deployment.yaml:"
-                    cat k8s/deployment.yaml | grep -A 2 "image:"
+                    echo "Updated deployment.yml:"
+                    cat k8s/deployment.yml | grep -A 5 "image:"
                 '''
             }
         }
@@ -108,8 +111,7 @@ pipeline {
                 echo '☸️ Deploying to Kubernetes...'
                 sh '''
                     # Apply Kubernetes manifests
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
+                    kubectl apply -f k8s/
                     
                     # Wait for rollout to complete
                     kubectl rollout status deployment/my-app --timeout=120s
@@ -136,17 +138,22 @@ pipeline {
                     
                     echo ""
                     echo "Application is accessible at:"
-                    echo "http://$(curl -s http://checkip.amazonaws.com):30100"
+                    PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
+                    echo "http://${PUBLIC_IP}:30100"
                 '''
             }
         }
         
         stage('Cleanup Local Images') {
             steps {
-                echo '🧹 Cleaning up local Docker images...'
+                echo '🧹 Cleaning up old Docker images...'
                 sh '''
-                    # Remove old images (keep last 3 builds)
-                    docker images ${DOCKER_IMAGE} --format "{{.Tag}}" | tail -n +4 | xargs -r docker rmi ${DOCKER_IMAGE}: 2>/dev/null || true
+                    # Keep last 3 builds, remove older ones
+                    OLD_IMAGES=$(docker images ${DOCKER_IMAGE} --format "{{.Tag}}" | tail -n +4)
+                    for tag in $OLD_IMAGES; do
+                        echo "Removing ${DOCKER_IMAGE}:$tag"
+                        docker rmi ${DOCKER_IMAGE}:$tag 2>/dev/null || true
+                    done
                     
                     echo "✅ Cleanup complete!"
                 '''
@@ -158,14 +165,22 @@ pipeline {
         always {
             echo '🔒 Logging out from Docker Hub...'
             sh 'docker logout'
+            sh 'docker rm -f test-container 2>/dev/null || true'
         }
         success {
             echo '✅ Pipeline completed successfully!'
-            echo "Application URL: http://$(curl -s http://checkip.amazonaws.com):30100"
+            sh '''
+                PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
+                echo "Application URL: http://${PUBLIC_IP}:30100"
+            '''
         }
         failure {
             echo '❌ Pipeline failed!'
             echo 'Check the logs above for errors.'
+            sh '''
+                echo "Recent pod logs (if deployment exists):"
+                kubectl get pods -l app=my-app -o name 2>/dev/null | head -1 | xargs kubectl logs --tail=20 2>/dev/null || echo "No pods found"
+            '''
         }
     }
 }
