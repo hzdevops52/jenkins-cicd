@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     environment {
         // Docker Hub credentials (ID from Jenkins credentials)
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
