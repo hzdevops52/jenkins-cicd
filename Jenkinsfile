@@ -53,7 +53,7 @@ pipeline {
 
                     docker run -d --name test-container -p 8888:3000 ${DOCKER_IMAGE_FULL}
 
-                    sleep 5
+                    sleep 30
 
                     curl -f http://localhost:8888/health || exit 1
 
