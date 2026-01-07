@@ -44,26 +44,6 @@ pipeline {
                 '''
             }
         }
-"""
-        stage('Test Docker Image') {
-            steps {
-                echo '🧪 Testing Docker image...'
-                sh '''
-                    docker rm -f test-container 2>/dev/null || true
-
-                    docker run -d --name test-container -p 8888:3000 ${DOCKER_IMAGE_FULL}
-
-                    sleep 30
-
-                    curl -f http://localhost:8888/health || exit 1
-
-                    docker stop test-container
-                    docker rm test-container
-
-                    echo "✅ Docker image test passed!"
-                '''
-            }
-        }"""
 
         stage('Login to Docker Hub') {
             steps {
