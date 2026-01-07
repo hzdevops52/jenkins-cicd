@@ -6,21 +6,27 @@ pipeline {
     }
 
     environment {
-        // Docker Hub credentials (ID from Jenkins credentials)
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
-
-        // Docker image name
         DOCKER_IMAGE = 'hzdevops52/my-app'
-
-        // Image tag using build number
         IMAGE_TAG = "${BUILD_NUMBER}"
-
-        // Full image names
         DOCKER_IMAGE_FULL = "${DOCKER_IMAGE}:${IMAGE_TAG}"
         DOCKER_IMAGE_LATEST = "${DOCKER_IMAGE}:latest"
     }
 
     stages {
+
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out repository...'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/hzdevops52/jenkins-cicd.git'
+                    ]]
+                ])
+            }
+        }
 
         stage('Build Info') {
             steps {
@@ -49,7 +55,8 @@ pipeline {
             steps {
                 echo '🔐 Logging into Docker Hub...'
                 sh '''
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    echo $DOCKERHUB_CREDENTIALS_PSW | \
+                    docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
                 '''
             }
         }
@@ -60,31 +67,20 @@ pipeline {
                 sh '''
                     docker push ${DOCKER_IMAGE_FULL}
                     docker push ${DOCKER_IMAGE_LATEST}
-                    echo "✅ Image pushed successfully!"
                 '''
             }
         }
-
-       stage('Update Kubernetes Manifests') {
-    steps {
-        echo '📝 Using latest tag for deployment...'
-        sh 'echo "Deployment will use :latest tag"'
-    }
-}
 
         stage('Deploy to Kubernetes') {
             steps {
                 echo '☸️ Deploying to Kubernetes...'
                 sh '''
-                    kubectl apply -f k8s/
-                    sh '''
-    echo "===== SHOWING MANIFESTS ====="
-    cat k8s/deployment.yml
-    cat k8s/service.yml
-'''
+                    echo "===== SHOWING MANIFESTS ====="
+                    cat k8s/deployment.yml
+                    cat k8s/service.yml
 
+                    kubectl apply -f k8s/
                     kubectl rollout status deployment/my-app --timeout=120s
-                    echo "✅ Deployment successful!"
                 '''
             }
         }
@@ -96,9 +92,6 @@ pipeline {
                     kubectl get deployment my-app
                     kubectl get pods -l app=my-app
                     kubectl get svc my-app-service
-
-                    PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
-                    echo "Application URL: http://${PUBLIC_IP}:30100"
                 '''
             }
         }
@@ -118,25 +111,15 @@ pipeline {
 
     post {
         always {
-            echo '🔒 Cleanup...'
-            sh 'docker logout'
-            sh 'docker rm -f test-container 2>/dev/null || true'
+            sh 'docker logout || true'
         }
 
         success {
             echo '✅ Pipeline completed successfully!'
-            sh '''
-                PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
-                echo "Application URL: http://${PUBLIC_IP}:30100"
-            '''
         }
 
         failure {
             echo '❌ Pipeline failed!'
-            sh '''
-                kubectl get pods -l app=my-app -o name 2>/dev/null | head -1 | \
-                xargs kubectl logs --tail=20 2>/dev/null || echo "No pods found"
-            '''
         }
     }
 }
