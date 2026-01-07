@@ -44,7 +44,7 @@ pipeline {
                 '''
             }
         }
-
+"""
         stage('Test Docker Image') {
             steps {
                 echo '🧪 Testing Docker image...'
@@ -63,7 +63,7 @@ pipeline {
                     echo "✅ Docker image test passed!"
                 '''
             }
-        }
+        }"""
 
         stage('Login to Docker Hub') {
             steps {
