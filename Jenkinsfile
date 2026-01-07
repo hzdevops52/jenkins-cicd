@@ -65,18 +65,12 @@ pipeline {
             }
         }
 
-        stage('Update Kubernetes Manifests') {
-            steps {
-                echo '📝 Updating Kubernetes deployment...'
-                sh '''
-                    sed -i "s|image: .*my-app.*|image: ${DOCKER_IMAGE_FULL}|g" k8s/deployment.yml
-                    sed -i "s|value: \\"PLACEHOLDER\\"|value: \\"${BUILD_NUMBER}\\"|g" k8s/deployment.yml
-
-                    echo "Updated deployment.yml:"
-                    cat k8s/deployment.yml | grep -A 5 image:
-                '''
-            }
-        }
+       stage('Update Kubernetes Manifests') {
+    steps {
+        echo '📝 Using latest tag for deployment...'
+        sh 'echo "Deployment will use :latest tag"'
+    }
+}
 
         stage('Deploy to Kubernetes') {
             steps {
