@@ -2,28 +2,28 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-app
-  label:
+  labels:
     app: my-app
 spec:
   replicas: 1
   selector:
-    matchlabels:
+    matchLabels:
       app: my-app
   template:
     metadata:
       labels:
         app: my-app
-  spec:
-    containers:
-    - name: my-app
-      image: hzdevops52/my-app:latest
-      ports:
-      - containerPort: 3000
-      resources:
-        limits:
-          memory: "128Mi"
-          cpu: "100m"
-        requests:
-          memory: "64Mi"
-          cpu: "50m"
-      imagePullPolicy: Always
+    spec:
+      containers:
+      - name: my-app
+        image: hzdevops52/my-app:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+        imagePullPolicy: Always
