@@ -77,6 +77,12 @@ pipeline {
                 echo '☸️ Deploying to Kubernetes...'
                 sh '''
                     kubectl apply -f k8s/
+                    sh '''
+    echo "===== SHOWING MANIFESTS ====="
+    cat k8s/deployment.yml
+    cat k8s/service.yml
+'''
+
                     kubectl rollout status deployment/my-app --timeout=120s
                     echo "✅ Deployment successful!"
                 '''
